@@ -1,0 +1,215 @@
+╔══════════════════════════════════════════════════════════════════╗
+║  SETUP GUIDE — Traffic Anomaly Detection System                ║
+║  For: NVIDIA RTX 4050 (6 GB VRAM) on Windows                  ║
+╚══════════════════════════════════════════════════════════════════╝
+
+Follow these steps EXACTLY in order. Don't skip any step.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: PREREQUISITES (Check these BEFORE anything else)
+═══════════════════════════════════════════════════════════════════
+
+You need:
+  ✓ Windows 10 or 11
+  ✓ Python 3.10 or 3.11 (download from python.org if you don't have it)
+  ✓ NVIDIA RTX 4050 with latest drivers installed
+  ✓ At least 20 GB free disk space
+  ✓ Internet connection (to download model weights on first run)
+
+To check Python version, open PowerShell and type:
+    python --version
+
+To check your GPU driver, open PowerShell and type:
+    nvidia-smi
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: UNZIP THE PROJECT
+═══════════════════════════════════════════════════════════════════
+
+1. Unzip DL-Project.zip to your Desktop (or anywhere you like)
+2. You should see this folder structure:
+
+    DL-Project/
+    ├── preprocess.py
+    ├── model.py
+    ├── train.py
+    ├── eval.py
+    ├── run_pipeline.py
+    ├── requirements.txt
+    ├── README.md
+    └── SETUP_GUIDE.txt  (this file)
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: DOWNLOAD THE NEXAR DATASET
+═══════════════════════════════════════════════════════════════════
+
+1. Go to: https://www.kaggle.com/competitions/nexar-collision-prediction
+2. Click "Join Competition" (you need a free Kaggle account)
+3. Go to the "Data" tab
+4. Download the dataset files:
+   - train.csv  (the metadata file with video_id, target, time_of_alert, etc.)
+   - The video files (usually in a .zip or folder called "train/")
+
+5. Create the following folder structure inside DL-Project:
+
+    DL-Project/
+    └── data/
+        └── nexar/
+            ├── train.csv          ← put the CSV file here
+            └── videos/
+                ├── 0a1b2c3d.mp4   ← put ALL video .mp4 files here
+                ├── 1d2e3f4g.mp4
+                ├── 2e3f4g5h.mp4
+                └── ... (all of them in this ONE folder)
+
+IMPORTANT:
+  - The CSV file MUST be named "train.csv"
+  - ALL video files go directly inside "videos/" (no subfolders)
+  - Video file names should match the "video_id" column in train.csv
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 4: CREATE PYTHON VIRTUAL ENVIRONMENT
+═══════════════════════════════════════════════════════════════════
+
+1. Open PowerShell
+2. Navigate to the project folder:
+
+    cd C:\Users\YourName\Desktop\DL-Project
+
+3. Create a virtual environment:
+
+    python -m venv venv
+
+4. Activate it:
+
+    .\venv\Scripts\activate
+
+   You should see (venv) at the start of your command line.
+   
+   ⚠ EVERY TIME you open a new PowerShell window to work on this
+     project, you must activate the venv again with this command.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 5: INSTALL DEPENDENCIES
+═══════════════════════════════════════════════════════════════════
+
+With the venv activated, run these commands one by one:
+
+1. Install PyTorch with CUDA support:
+
+    pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+
+2. Install all other packages:
+
+    pip install -r requirements.txt
+
+This will take 5-10 minutes. Wait for it to finish completely.
+
+3. Verify CUDA works:
+
+    python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0))"
+
+   Expected output:
+     True
+     NVIDIA GeForce RTX 4050 Laptop GPU
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 6: RUN THE FULL PIPELINE (ONE COMMAND)
+═══════════════════════════════════════════════════════════════════
+
+With venv activated and in the DL-Project folder, run:
+
+    python run_pipeline.py --data_root ./data/nexar --csv ./data/nexar/train.csv
+
+This single command does EVERYTHING automatically:
+  Stage 0: Checks all packages are installed
+  Stage 1: Creates output folders
+  Stage 2: Splits data into train/val/test (70/15/15)
+  Stage 3: Extracts features from all videos (THIS TAKES HOURS)
+  Stage 4: Trains the model (30-60 min)
+  Stage 5: Evaluates and prints STAUC/TTA scores
+  
+⚠ Stage 3 (feature extraction) is the slowest part.
+  It processes each video through 3 AI models one at a time.
+  Expect ~2 minutes per video. For 1000 videos = ~33 hours.
+  
+  TIP: You can leave it running overnight. If it crashes or you
+  need to stop it, just run the same command again — it will
+  skip videos that were already processed.
+
+
+═══════════════════════════════════════════════════════════════════
+STEP 7: VIEW RESULTS
+═══════════════════════════════════════════════════════════════════
+
+After the pipeline finishes:
+
+  Results JSON:  outputs/eval_results.json
+  Best model:    checkpoints/best.pt
+
+To generate a demo video showing the model's predictions:
+
+    python eval.py --visualize --video data/nexar/videos/SOME_VIDEO.mp4 --checkpoint checkpoints/best.pt --output demo.mp4
+
+Replace SOME_VIDEO.mp4 with any video filename from your dataset.
+The output demo.mp4 will show:
+  - Green/Yellow/Red bounding boxes on hazard vehicles
+  - A risk gauge (0-100%) in the top-left corner
+  - A countdown timer before predicted impact
+
+
+═══════════════════════════════════════════════════════════════════
+TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════
+
+Problem: "CUDA not available"
+Fix:     Make sure you installed the CUDA version of PyTorch
+         (the pip install torch ... --index-url ... command)
+         Also update your NVIDIA drivers from nvidia.com
+
+Problem: "No module named 'bitsandbytes'"
+Fix:     pip install bitsandbytes
+         Note: bitsandbytes on Windows may need a special build.
+         Try: pip install bitsandbytes-windows if the regular one fails.
+
+Problem: "Out of memory" error
+Fix:     Close Chrome and other GPU-heavy apps.
+         The pipeline is designed for 6 GB VRAM but needs it
+         to be mostly free.
+
+Problem: Pipeline crashes mid-extraction
+Fix:     Just run the same command again. It automatically skips
+         videos that were already processed.
+
+Problem: "FileNotFoundError" for a video
+Fix:     Make sure video files are directly in data/nexar/videos/
+         and their filenames match the video_id column in train.csv.
+
+
+═══════════════════════════════════════════════════════════════════
+QUICK REFERENCE — ALL COMMANDS
+═══════════════════════════════════════════════════════════════════
+
+# Activate environment (do this first, every time)
+.\venv\Scripts\activate
+
+# Run full pipeline
+python run_pipeline.py --data_root ./data/nexar --csv ./data/nexar/train.csv
+
+# Run full pipeline but skip extraction (if features already exist)
+python run_pipeline.py --skip_extract
+
+# Only evaluate (if already trained)
+python run_pipeline.py --eval_only
+
+# Generate demo video
+python eval.py --visualize --video data/nexar/videos/VIDEONAME.mp4 --checkpoint checkpoints/best.pt --output demo.mp4
+
+# Train with custom settings
+python train.py --train_dir features/train --val_dir features/val --epochs 100 --lr 0.0001

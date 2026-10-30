@@ -1,0 +1,30 @@
+# ══════════════════════════════════════════════════════════════
+# Egocentric Traffic Anomaly Detection — Tri-Expert Ensemble
+# Target: NVIDIA RTX 4050 (6 GB VRAM)
+# ══════════════════════════════════════════════════════════════
+
+# ── Core ─────────────────────────────────────────────────────
+torch>=2.1.0
+torchvision>=0.16.0
+
+# ── VideoMAE-Base backbone (4-bit NF4) ───────────────────────
+transformers>=4.40.0
+accelerate>=0.30.0
+bitsandbytes>=0.43.0
+
+# ── EfficientNet-V2-S (Context Expert) ───────────────────────
+timm>=1.0.0
+
+# ── YOLOv12-Nano + ByteTrack (Spatial Expert) ───────────────
+ultralytics>=8.3.0
+
+# ── Video I/O & Image Processing ────────────────────────────
+opencv-python>=4.8.0
+
+# ── Data & Metrics ──────────────────────────────────────────
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+
+# ── Utilities ────────────────────────────────────────────────
+tqdm
